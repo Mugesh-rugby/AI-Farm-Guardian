@@ -1,0 +1,17 @@
+{
+  "name": "ai-farm-guardian",
+  "version": "1.0.0",
+  "description": "AI Farm Guardian - Smart Crop Health Monitoring & Dynamic Intervention Prioritization",
+  "scripts": {
+    "dev": "concurrently --kill-others \"npm run backend\" \"npm run frontend\" --names \"BACKEND,FRONTEND\" --prefix-colors \"green,cyan\"",
+    "backend": "python run_backend.py",
+    "frontend": "node scripts/wait-for-backend.cjs && npm --prefix frontend run dev",
+    "install:all": "npm install && npm --prefix frontend install",
+    "install:backend": "python -m pip install -r backend/requirements.txt",
+    "build": "npm --prefix frontend run build"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "devDependencies": {}
+}
