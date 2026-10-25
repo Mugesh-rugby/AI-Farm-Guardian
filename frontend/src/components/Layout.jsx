@@ -5,11 +5,12 @@ import { useFarm } from '../context/FarmContext'
 import FarmGuardianMark from './FarmGuardianMark'
 import {
   LayoutDashboard, Tractor, ScanLine, Sparkles, CloudSun,
-  MessageCircle, ClipboardCheck, User, LogOut, Menu, X, ChevronLeft
+  MessageCircle, ClipboardCheck, User, LogOut, Menu, X, ChevronLeft, ListOrdered
 } from 'lucide-react'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/priority', label: 'Intervention Prioritizer', icon: ListOrdered },
   { to: '/farms', label: 'My Farms', icon: Tractor },
   { to: '/scanner', label: 'Crop Scanner', icon: ScanLine },
   { to: '/rescue', label: 'AI Rescue Planner', icon: Sparkles },
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
 
 const MOBILE_ITEMS = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { to: '/priority', label: 'Priority', icon: ListOrdered },
   { to: '/scanner', label: 'Scan', icon: ScanLine },
   { to: '/rescue', label: 'Rescue', icon: Sparkles },
   { to: '/assistant', label: 'Assistant', icon: MessageCircle },

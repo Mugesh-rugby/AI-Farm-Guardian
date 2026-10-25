@@ -7,12 +7,16 @@ const display = (value, unit = '') => value == null || !Number.isFinite(Number(v
   ? 'Unavailable'
   : `${Math.round(Number(value) * 10) / 10}${unit}`
 
-const formatForecastTime = (value) => {
+const formatForecastTime = (value, timezoneOffset = 0) => {
   if (!value) return 'Time unavailable'
-  const date = new Date(value.replace(' ', 'T') + (value.includes('Z') ? '' : 'Z'))
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleString(undefined, { weekday: 'short', hour: 'numeric' })
+  const normalized = value.replace(' ', 'T')
+  const timestamp = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized) ? normalized : `${normalized}Z`
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return value
+  const farmTime = new Date(date.getTime() + (Number(timezoneOffset) || 0) * 1000)
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC'
+  }).format(farmTime)
 }
 
 export default function Weather() {
@@ -23,12 +27,12 @@ export default function Weather() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
 
-  const loadWeather = useCallback(async (id, quiet = false) => {
+  const loadWeather = useCallback(async (id, quiet = false, forceRefresh = false) => {
     if (!id) return
     if (quiet) setRefreshing(true)
     else setLoading(true)
     try {
-      const response = await api.get('/weather', { params: { farm_id: id } })
+      const response = await api.get('/weather', { params: { farm_id: id, refresh: forceRefresh } })
       setData(response.data.data)
       setError(response.data.connected ? '' : response.data.reason || 'Weather data is unavailable.')
     } catch (requestError) {
@@ -115,7 +119,7 @@ export default function Weather() {
           </select>
           <button
             type="button"
-            onClick={() => loadWeather(farmId, true)}
+            onClick={() => loadWeather(farmId, true, true)}
             disabled={!farmId || loading || refreshing}
             className="btn-secondary"
           >
@@ -202,12 +206,12 @@ export default function Weather() {
             <section className="metric-card space-y-4">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">Forecast</h2>
-                <p className="text-sm text-slate-500">Forecast intervals supplied by OpenWeather; unavailable values are not inferred.</p>
+                <p className="text-sm text-slate-500">One OpenWeather forecast reading per local date; unavailable values are not inferred.</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {data.forecast.map((item, index) => (
                   <article key={`${item.time || 'forecast'}-${index}`} className="rounded-xl border border-slate-200 bg-white p-4">
-                    <p className="text-xs font-semibold text-slate-500">{formatForecastTime(item.time)}</p>
+                    <p className="text-xs font-semibold text-slate-500">{formatForecastTime(item.time, data.timezone_offset)}</p>
                     <p className="mt-3 flex items-center gap-2 text-xl font-semibold text-slate-900">
                       <Thermometer size={17} className="text-emerald-700" />{display(item.temperature, '°C')}
                     </p>

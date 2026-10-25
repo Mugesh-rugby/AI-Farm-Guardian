@@ -25,7 +25,7 @@ AI Farm Guardian aims to address this challenge by identifying potential risks a
 
 ### 1. Crop Image Scanner
 
-Uses a locally trained four-class tomato classifier when its checkpoint is
+Uses a locally trained crop classifier when its checkpoint is
 installed, otherwise uses the configured Groq vision model
 (`GROQ_VISION_MODEL`, default `qwen/qwen3.8-27b`). When you request diagnosis
 and rescue guidance after a scan, the saved crop photo is sent to that Groq
@@ -43,7 +43,7 @@ Provides general AI-assisted guidance when the backend provider is configured. I
 
 ### 4. Weather Intelligence
 
-Provides weather-related information to help farmers understand environmental conditions affecting their crops.
+Shows current conditions and forecast from the configured OpenWeather service for each saved farm location. Manual refresh bypasses the short server cache; if OpenWeather is unavailable, the page shows unavailable rather than canned readings.
 
 ### 5. Economic Risk Analysis
 
@@ -211,31 +211,69 @@ refuses to write to a non-empty MySQL target. Review the data first because
 older local databases may include demonstration records.
 
 For an already-created MySQL database from an earlier version, apply
-`backend\migrations\001_treatment_fields.sql` once before starting the API.
+`backend\migrations\001_treatment_fields.sql`,
+`backend\migrations\002_intervention_workflow.sql`, and
+`backend\migrations\003_remove_rescue_weather_treatment_notes.sql` in order
+before starting the API. Migration 002 adds workflow fields to the existing
+`priority_scores` table; migration 003 removes duplicated weather payloads from
+legacy Rescue Planner treatment notes.
 
 ### Crop classifier training
 
-The training script uses four tomato classes from the provided PlantVillage
-dataset: healthy, early blight, late blight, and bacterial spot. It samples
-at most 1,000 unique images per class, creates deterministic stratified
+The training script discovers every class folder in the PlantVillage dataset
+by default and samples at most 200 unique images per class. It fine-tunes the
+entire pretrained MobileNetV3-Small model, creates deterministic stratified
 train/validation/test splits, and reports accuracy and per-class metrics on
-the held-out test split. The completed run reached **81.33% accuracy on 600
-held-out images** (150 per class). Recall was 88.67% for healthy, 66.00% for
-early blight, 77.33% for late blight, and 93.33% for bacterial spot. These
-results describe this PlantVillage split only; they do not guarantee accuracy
-on field photographs or represent Groq results.
+the held-out test split. Use `--classes` to train a selected set of class
+folders or `--max-per-class` to change the per-class image cap. The current
+15-class run reached 94.81% accuracy on 443 held-out images; Tomato Early
+Blight had the lowest recall at 76.67%. These results describe this PlantVillage
+split only; they do not guarantee accuracy on field photographs or represent
+Groq results.
 
 ```powershell
 backend\.venv\Scripts\python.exe -m pip install -r backend\requirements-ml.txt
-backend\.venv\Scripts\python.exe -m backend.ml.train --epochs 5
+backend\.venv\Scripts\python.exe -m backend.ml.train --epochs 10 --max-per-class 200
 ```
 
 Training writes `backend\models\efficientnetv2_s.pth` and
 `backend\models\efficientnetv2_s.test-metrics.json`. The checkpoint filename
 is retained for compatibility; its embedded metadata identifies the actual
-MobileNetV3-Small architecture and four supported classes. The backend loads
+MobileNetV3-Small architecture and supported classes. The backend loads
 that metadata when using the local model. If the checkpoint is absent, Groq
 vision remains the scanner fallback when configured.
+
+### Intervention prioritizer
+
+`/priority` ranks saved scan cases and supports farm, field, crop, problem,
+priority, workflow-status, and detected-date filters. Summary counts are queried
+from the signed-in user's database records. Cases can be created from a saved
+scan after the farmer records observed severity; affected area, follow-up date,
+and selected action remain optional. Repeated active cases for the same issue
+and field are not duplicated. Treatment records link through the scan; marking
+a treatment complete never marks the crop problem resolved.
+
+Current scoring is explicitly `rules-v1`, not XGBoost. There is no suitable
+human-labeled intervention outcome dataset in this repository; existing
+`priority_scores` are outputs from the previous rule engine and are not valid
+independent training labels. Training XGBoost on those records would only learn
+to imitate the current rules. The initial configurable weights in
+`backend/services/priority_engine.py` are severity 0.28, affected area 0.18,
+growth stage 0.14, available weather 0.13, and an explicit user-entered yield
+loss assumption 0.12. Available factors are reweighted when other inputs are
+missing. Scan confidence is displayed separately and does not affect urgency;
+spread risk is excluded until validated field-specific data is available.
+Thresholds are 38/60/80 for Medium/High/Critical. Weights and thresholds are
+initial heuristics and require agricultural expert review; priority scores are
+not probabilities or scientifically validated risk estimates. If no severity,
+affected-area, or explicit loss evidence exists, the case is `UNASSESSED` and
+has no numerical score.
+
+The workflow API is under `/api/priority`: `GET /summary`, `GET /candidates`,
+`POST /from-scan/{scan_id}`, `GET /cases/{priority_id}`,
+`PATCH /cases/{priority_id}`, and `POST /cases/{priority_id}/reassess`. Existing
+`/analyze`, `/recalculate`, and scan-generated priorities continue to use the
+same rule scorer.
 
 ### Deployment
 

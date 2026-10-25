@@ -1,5 +1,6 @@
 import logging
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -29,7 +30,11 @@ def _advisories(current: dict[str, Any], forecast: list[dict[str, Any]]) -> list
     return messages
 
 
-async def get_weather(lat: float, lon: float) -> dict[str, Any] | None:
+async def get_weather(
+    lat: float,
+    lon: float,
+    force_refresh: bool = False,
+) -> dict[str, Any] | None:
     if not OPENWEATHER_API_KEY:
         return None
     if not (-90 <= lat <= 90 and -180 <= lon <= 180):
@@ -38,7 +43,7 @@ async def get_weather(lat: float, lon: float) -> dict[str, Any] | None:
     cache_key = (round(lat, 4), round(lon, 4))
     cached = _weather_cache.get(cache_key)
     now = time.monotonic()
-    if cached and now - cached[0] < _CACHE_SECONDS:
+    if not force_refresh and cached and now - cached[0] < _CACHE_SECONDS:
         return cached[1]
 
     params = {"lat": lat, "lon": lon, "appid": OPENWEATHER_API_KEY, "units": "metric"}
@@ -70,21 +75,39 @@ async def get_weather(lat: float, lon: float) -> dict[str, Any] | None:
         logger.warning("OpenWeather response is missing current weather fields.")
         return None
 
-    forecast = []
-    for entry in forecast_payload.get("list", [])[:8]:
+    timezone_offset = current_payload.get(
+        "timezone", (forecast_payload.get("city") or {}).get("timezone", 0)
+    )
+    daily_forecasts: dict[str, tuple[float, dict[str, Any]]] = {}
+    for entry in forecast_payload.get("list", []):
         values = entry.get("main", {})
-        if "temp" not in values:
+        forecast_time = entry.get("dt_txt")
+        if "temp" not in values or not forecast_time:
             continue
-        forecast.append(
-            {
-                "time": entry.get("dt_txt"),
+
+        try:
+            utc_time = datetime.strptime(forecast_time, "%Y-%m-%d %H:%M:%S").replace(
+                tzinfo=timezone.utc
+            )
+        except ValueError:
+            continue
+        local_time = utc_time + timedelta(seconds=timezone_offset)
+        local_date = local_time.date().isoformat()
+        distance_from_noon = abs(
+            local_time.hour * 60 + local_time.minute - 12 * 60
+        )
+        item = {
+                "time": forecast_time,
                 "temperature": values["temp"],
                 "humidity": values.get("humidity"),
                 "rain_probability": (
                     entry["pop"] * 100 if entry.get("pop") is not None else None
                 ),
             }
-        )
+        selected = daily_forecasts.get(local_date)
+        if selected is None or distance_from_noon < selected[0]:
+            daily_forecasts[local_date] = (distance_from_noon, item)
+    forecast = [daily_forecasts[day][1] for day in sorted(daily_forecasts)]
 
     rain = current_payload.get("rain") or {}
     first_condition = conditions[0]
@@ -101,6 +124,7 @@ async def get_weather(lat: float, lon: float) -> dict[str, Any] | None:
         "description": first_condition.get("description", "Unavailable").title(),
         "icon": first_condition.get("icon"),
         "location_name": current_payload.get("name"),
+        "timezone_offset": timezone_offset,
         "rain_probability": forecast[0]["rain_probability"] if forecast else None,
         "forecast": forecast,
         "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -112,8 +136,13 @@ async def get_weather(lat: float, lon: float) -> dict[str, Any] | None:
 
 
 class WeatherIntelligenceService:
-    async def get_weather_data(self, lat: float, lon: float) -> dict[str, Any] | None:
-        return await get_weather(lat, lon)
+    async def get_weather_data(
+        self,
+        lat: float,
+        lon: float,
+        force_refresh: bool = False,
+    ) -> dict[str, Any] | None:
+        return await get_weather(lat, lon, force_refresh=force_refresh)
 
 
 weather_service = WeatherIntelligenceService()

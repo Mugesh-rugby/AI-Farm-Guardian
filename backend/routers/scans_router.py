@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.concurrency import run_in_threadpool
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from PIL import Image, UnidentifiedImageError
 
@@ -20,7 +21,7 @@ from services.vision_service import (
     model_status,
 )
 from config import MAX_UPLOAD_BYTES, UPLOAD_DIR
-from services.priority_engine import compute_priority
+from services.priority_engine import SCORING_METHOD, compute_priority, sanitize_json_values
 from services.weather_service import get_weather
 from services.economic_engine import estimate_economic_risk
 
@@ -53,23 +54,52 @@ async def _compute_and_store_priority(db: Session, scan: models.Scan, field: mod
     ):
         weather = await get_weather(field.farm.latitude, field.farm.longitude)
 
-    economic = estimate_economic_risk(
-        affected_area_pct=scan.affected_area_pct or 0,
-        field_size_acres=field.size_acres,
-        crop_price_per_kg=field.crop_price_per_kg,
-        expected_yield_kg_per_acre=field.expected_yield_kg_per_acre,
-    )
+    economic = None
+    if scan.affected_area_pct is not None:
+        economic = estimate_economic_risk(
+            affected_area_pct=scan.affected_area_pct,
+            field_size_acres=field.size_acres,
+            crop_price_per_kg=field.crop_price_per_kg,
+            expected_yield_kg_per_acre=field.expected_yield_kg_per_acre,
+        )
 
     score, tier, reasons, factors, suggested_timeframe = compute_priority(
         severity=scan.severity,
         confidence=scan.confidence,
-        affected_area_pct=scan.affected_area_pct or 0,
+        affected_area_pct=scan.affected_area_pct,
         issue_type=scan.issue_type,
         growth_stage=field.growth_stage,
         weather=weather,
         economic=economic,
         crop_type=field.crop,
     )
+    factors["weather_context"] = (
+        {
+            key: weather[key]
+            for key in (
+                "temperature", "feels_like", "humidity", "rainfall_mm",
+                "rain_probability", "wind_speed_kmh", "condition", "updated_at", "source",
+            )
+            if weather.get(key) is not None
+        }
+        if weather else None
+    )
+    factors["economic_context"] = economic
+    factors = sanitize_json_values(factors)
+
+    if scan.disease_name:
+        open_case = (
+            db.query(models.PriorityScore)
+            .join(models.Scan, models.PriorityScore.scan_id == models.Scan.id)
+            .filter(
+                models.Scan.field_id == field.id,
+                func.lower(func.trim(models.Scan.disease_name)) == scan.disease_name.strip().casefold(),
+                models.PriorityScore.status.in_(("pending", "in_progress")),
+            )
+            .first()
+        )
+        if open_case:
+            return open_case
 
     existing = db.query(models.PriorityScore).filter(models.PriorityScore.scan_id == scan.id).first()
     if existing:
@@ -83,6 +113,8 @@ async def _compute_and_store_priority(db: Session, scan: models.Scan, field: mod
             scan_id=scan.id,
             score=score,
             tier=tier,
+            status="pending",
+            scoring_method=SCORING_METHOD,
             suggested_timeframe=suggested_timeframe,
             reasons_json=json.dumps(reasons),
             factors_json=json.dumps(factors),

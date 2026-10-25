@@ -15,6 +15,7 @@ router = APIRouter(prefix="/api/weather", tags=["weather"])
 @router.get("/")
 async def weather_for_farm(
     farm_id: Optional[int] = Query(None),
+    refresh: bool = Query(False),
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user)
 ):
@@ -42,7 +43,7 @@ async def weather_for_farm(
     if farm.latitude is None or farm.longitude is None:
         return {"connected": False, "reason": "Add latitude and longitude to this farm.", "data": None}
 
-    data = await get_weather(farm.latitude, farm.longitude)
+    data = await get_weather(farm.latitude, farm.longitude, force_refresh=refresh)
     if data is None:
         reason = (
             "OPENWEATHER_API_KEY is not configured."

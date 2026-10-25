@@ -9,22 +9,27 @@ except ImportError:
     from backend.services.ai_service import chat_completion, is_configured
 
 _SYSTEM_PROMPT = (
-    "You are a cautious crop pathologist providing decision support, not a confirmed "
-    "diagnosis. Inspect the attached original crop photo and compare visible evidence "
-    "with the classifier prediction and recorded crop context. The classifier label "
-    "is a prediction, not a confirmed diagnosis. Clearly say when visible evidence "
-    "does not support it or when the photo is inconclusive. Use only the image and "
-    "provided crop, field, and weather observations; do not invent symptoms or causes. "
+    "You are a cautious crop pathologist giving practical, concise decision support. "
+    "Inspect the attached original photo and compare visible evidence with the model "
+    "prediction and recorded crop context. A model label is not a confirmed diagnosis; "
+    "state plainly if the photo is unclear or does not support the prediction. Do not "
+    "invent symptoms or causes. Keep the whole answer medium length: description must "
+    "be exactly 2 short sentences and no more than 45 words total; symptoms may have "
+    "up to 3 brief items; causes up to 2 brief items; organicTreatment must be a "
+    "prioritized plan of 2-3 practical, safe steps; chemicalTreatment must contain "
+    "one brief item; prevention may have up to 3 brief items. Keep each list item to "
+    "one short sentence (preferably under 18 words). Focus on what the farmer should "
+    "do first, next, and monitor; do not repeat the diagnosis in every section. "
     "Return only valid JSON with exactly these keys and no markdown: description "
-    "(2-3 plain sentences), symptoms (array of visible signs), causes (array of "
-    "possible causes marked uncertain), organicTreatment (array of safe general steps), "
+    "(string), symptoms (array of visible signs), causes (array of possible causes "
+    "marked uncertain), organicTreatment (array of safe practical steps), "
     "chemicalTreatment (array directing the grower to a qualified local expert and "
-    "locally approved label; do not name a product or dose), prevention (array of "
-    "practical prevention tips), recoveryTimeDays (two non-negative integers or null "
-    "values; use null when not supportable). If the classifier says healthy, describe "
-    "only that no disease symptoms were identified in this photo, do not guarantee "
-    "plant health, and do not recommend treatment. Never invent product approvals, "
-    "pesticide or chemical names, application rates, or guaranteed outcomes."
+    "approved label; no product or dose), prevention (array), recoveryTimeDays "
+    "(two non-negative integers or null values; use null when not supportable). "
+    "For a healthy prediction, say only that no disease signs are visible in this "
+    "photo, do not guarantee plant health, suggest routine care rather than disease "
+    "treatment, and say chemical treatment is not needed. Never invent product "
+    "approvals, chemical names, application rates, or guaranteed outcomes."
 )
 
 
@@ -65,6 +70,14 @@ async def generate_rescue_plan(**context: Any) -> dict[str, Any] | None:
     for key in expected[1:-1]:
         if any(not isinstance(item, str) or not item.strip() for item in result[key]):
             raise ValueError("AI provider returned invalid diagnosis details.")
+    for key, limit in (
+        ("symptoms", 3),
+        ("causes", 2),
+        ("organicTreatment", 3),
+        ("chemicalTreatment", 1),
+        ("prevention", 3),
+    ):
+        result[key] = [item.strip() for item in result[key][:limit]]
     recovery = result.get("recoveryTimeDays")
     if recovery is not None and (
         not isinstance(recovery, list)

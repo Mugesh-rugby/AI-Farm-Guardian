@@ -23,7 +23,7 @@ export default function MyFarms() {
     name: '',
     latitude: null,
     longitude: null,
-    area_acres: null,
+    area_acres: '',
   })
 
   // Field Form
@@ -31,7 +31,7 @@ export default function MyFarms() {
     name: '',
     crop: '',
     growth_stage: '',
-    size_acres: null,
+    size_acres: '',
   })
 
   // Auto-detect browser GPS coordinates
@@ -66,6 +66,10 @@ export default function MyFarms() {
       toast.error('Please enter a farm name')
       return
     }
+    if (farmForm.area_acres !== '' && Number(farmForm.area_acres) <= 0) {
+      toast.error('Farm area must be greater than zero')
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -73,12 +77,12 @@ export default function MyFarms() {
         name: cleanName,
         latitude: farmForm.latitude,
         longitude: farmForm.longitude,
-        area_acres: farmForm.area_acres || null,
+        area_acres: farmForm.area_acres === '' ? null : Number(farmForm.area_acres),
       }
       await api.post('/farms/', payload)
       toast.success(`Farm "${cleanName}" registered`)
       setShowAddFarm(false)
-      setFarmForm({ name: '', latitude: null, longitude: null, area_acres: null })
+      setFarmForm({ name: '', latitude: null, longitude: null, area_acres: '' })
       fetchFarms()
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to create farm')
@@ -100,6 +104,10 @@ export default function MyFarms() {
       toast.error(`Field "${cleanFieldName}" already exists in this farm. Choose a unique field name.`)
       return
     }
+    if (fieldForm.size_acres !== '' && Number(fieldForm.size_acres) <= 0) {
+      toast.error('Plot area must be greater than zero')
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -108,7 +116,7 @@ export default function MyFarms() {
         farm_id: farmId,
         crop: fieldForm.crop,
         growth_stage: fieldForm.growth_stage,
-        size_acres: fieldForm.size_acres || null,
+        size_acres: fieldForm.size_acres === '' ? null : Number(fieldForm.size_acres),
       })
       toast.success(`Field "${cleanFieldName}" added to farm!`)
       setShowAddField(null)
@@ -116,7 +124,7 @@ export default function MyFarms() {
         name: '',
         crop: '',
         growth_stage: '',
-        size_acres: null,
+        size_acres: '',
       })
       fetchFarms()
     } catch (err) {
@@ -184,9 +192,10 @@ export default function MyFarms() {
               <div>
                 <label className="text-xs font-bold text-gray-700 mb-1 block">Total Farm Area (Acres)</label>
                 <input 
-                  type="number" min="0.1" step="0.5" 
+                  type="number" min="0" step="any" inputMode="decimal"
                   value={farmForm.area_acres ?? ''}
-                  onChange={e => setFarmForm({...farmForm, area_acres: e.target.value ? parseFloat(e.target.value) : null})} 
+                  onChange={e => setFarmForm({...farmForm, area_acres: e.target.value})}
+                  placeholder="Enter area in acres"
                   className="farm-input" 
                 />
               </div>
@@ -474,9 +483,10 @@ export default function MyFarms() {
                           <div>
                             <label className="text-[10px] font-bold text-gray-700 mb-0.5 block">Plot Area (Acres)</label>
                             <input 
-                              type="number" min="0.05" step="0.1" 
+                              type="number" min="0" step="any" inputMode="decimal"
                               value={fieldForm.size_acres ?? ''}
-                              onChange={e => setFieldForm({...fieldForm, size_acres: e.target.value ? parseFloat(e.target.value) : null})} 
+                              onChange={e => setFieldForm({...fieldForm, size_acres: e.target.value})}
+                              placeholder="Enter plot area"
                               className="farm-input text-xs py-1.5" 
                             />
                           </div>

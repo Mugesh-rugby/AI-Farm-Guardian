@@ -28,33 +28,7 @@ export default function Register() {
   }
 
   return (
-    <div className="login-page">
-      {/* Left decorative panel */}
-      <div className="login-hero">
-        <div className="login-hero-content">
-          <div className="login-hero-logo">
-            <FarmGuardianMark className="h-16 w-16 rounded-[18px] border border-white/20 bg-white/15 backdrop-blur" iconClassName="h-8 w-8" />
-          </div>
-          <h1 className="login-hero-title">AI Farm Guardian</h1>
-          <p className="login-hero-subtitle">
-            Join thousands of farmers using AI<br />to protect their crops
-          </p>
-          <div className="login-hero-features">
-            <div className="login-hero-feature">
-              <span className="login-hero-dot" />Free to get started
-            </div>
-            <div className="login-hero-feature">
-              <span className="login-hero-dot" />Instant disease detection
-            </div>
-            <div className="login-hero-feature">
-              <span className="login-hero-dot" />Personalized rescue plans
-            </div>
-          </div>
-        </div>
-        <div className="login-hero-pattern" />
-      </div>
-
-      {/* Right form panel */}
+    <div className="login-page login-page-centered">
       <div className="login-form-panel">
         <div className="login-form-container">
           <div className="login-mobile-logo">

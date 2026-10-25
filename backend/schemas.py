@@ -137,11 +137,33 @@ class ScanOut(BaseModel):
 class PriorityOut(BaseModel):
     id: int
     scan_id: int
-    score: float
+    score: Optional[float] = None
     tier: str
     reasons: List[str]
     factors: dict
     computed_at: datetime
+
+
+class InterventionCreate(BaseModel):
+    severity: Literal["low", "medium", "high", "critical"]
+    affected_area_pct: Optional[float] = Field(default=None, ge=0, le=100)
+    follow_up_at: Optional[datetime] = None
+    chosen_action: Optional[str] = Field(default=None, max_length=2000)
+    allow_duplicate: bool = False
+
+
+class InterventionUpdate(BaseModel):
+    status: Optional[Literal["pending", "in_progress", "completed"]] = None
+    follow_up_at: Optional[datetime] = None
+    chosen_action: Optional[str] = Field(default=None, max_length=2000)
+
+    @model_validator(mode="after")
+    def require_an_update(self):
+        if not self.model_fields_set:
+            raise ValueError("At least one intervention field must be updated.")
+        if "status" in self.model_fields_set and self.status is None:
+            raise ValueError("Intervention status cannot be cleared.")
+        return self
 
 
 # ---- Treatment ----

@@ -1,4 +1,5 @@
 import unittest
+from math import isfinite
 
 from backend.services.economic_engine import estimate_economic_risk
 from backend.services.priority_engine import compute_priority
@@ -71,8 +72,51 @@ class PriorityScoringTests(unittest.TestCase):
             weather=None,
         )
 
-        self.assertEqual(factors["weather_score"], 0)
+        self.assertIsNone(factors["weather_score"])
         self.assertTrue(any("Weather data unavailable" in reason for reason in reasons))
+
+    def test_missing_inputs_do_not_receive_a_fabricated_score(self):
+        score, tier, reasons, factors, _ = compute_priority(
+            confidence=98.0,
+            severity=None,
+            affected_area_pct=None,
+            growth_stage=None,
+        )
+
+        self.assertIsNone(score)
+        self.assertEqual(tier, "UNASSESSED")
+        self.assertEqual(factors["weights_used"], {})
+        self.assertEqual(factors["confidence_pct"], 98.0)
+        self.assertTrue(factors["missing_information"])
+        self.assertTrue(any("excluded from urgency score" in reason for reason in reasons))
+
+    def test_confidence_does_not_change_priority_score(self):
+        low_confidence = compute_priority("high", 15.0, 25.0)[0]
+        high_confidence = compute_priority("high", 99.0, 25.0)[0]
+
+        self.assertEqual(low_confidence, high_confidence)
+
+    def test_weather_and_growth_stage_alone_do_not_create_urgency(self):
+        score, tier, _, factors, _ = compute_priority(
+            severity=None,
+            affected_area_pct=None,
+            growth_stage="seedling",
+            weather={"temperature": 28, "humidity": 88},
+        )
+
+        self.assertIsNone(score)
+        self.assertEqual(tier, "UNASSESSED")
+        self.assertEqual(factors["weights_used"], {})
+
+    def test_non_finite_weather_values_are_excluded_from_scoring(self):
+        score, _, _, factors, _ = compute_priority(
+            severity="medium",
+            affected_area_pct=None,
+            weather={"temperature": float("nan"), "humidity": float("inf")},
+        )
+
+        self.assertTrue(isfinite(score))
+        self.assertIsNone(factors["weather_score"])
 
 
 if __name__ == "__main__":

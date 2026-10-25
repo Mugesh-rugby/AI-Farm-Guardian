@@ -5,9 +5,8 @@ import EmptyState from '../components/EmptyState'
 import { useFarm } from '../context/FarmContext'
 import toast from 'react-hot-toast'
 import { 
-  Sparkles, AlertTriangle, Leaf, FlaskConical, Droplets, Clock, 
-  ShieldCheck, CloudSun, CheckCircle2, Database, 
-  Layers, ShieldAlert, ThermometerSun
+  Sparkles, Leaf, FlaskConical, CheckCircle2, Database,
+  Layers, ThermometerSun
 } from 'lucide-react'
 
 export default function RescuePlanner() {
@@ -24,7 +23,6 @@ export default function RescuePlanner() {
   const [loading, setLoading] = useState(false)
   const [listLoading, setListLoading] = useState(true)
   const [deploying, setDeploying] = useState(false)
-  const [activeTab, setActiveTab] = useState('all') // 'all', 'organic', 'chemical'
   const [actionType, setActionType] = useState('organic')
   const [treatmentAction, setTreatmentAction] = useState('')
 
@@ -252,185 +250,70 @@ export default function RescuePlanner() {
         </div>
       )}
 
-      {/* The 7 Plan Cards */}
+      {/* Concise diagnosis and treatment plan */}
       {!loading && plan && (
         <div className="space-y-4">
-          <section className="grid gap-4 sm:grid-cols-2">
-            <article className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm sm:col-span-2">
-              <h3 className="text-base font-bold text-gray-900">Image-based crop diagnosis</h3>
+          <p className="px-1 text-xs text-gray-500">
+            Guidance from <strong className="text-emerald-700">{source}</strong>; confirm important decisions with a local agricultural expert.
+          </p>
+          <section className="grid gap-4 lg:grid-cols-2">
+            <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+              <h3 className="text-base font-bold text-gray-900">Diagnosis</h3>
               <p className="mt-2 text-sm leading-6 text-gray-700">{plan.description || plan.immediate_action}</p>
               {plan.image_assessed === false && (
                 <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-                  The saved image was not included in this assessment. Scan the crop again for an image-based diagnosis.
+                  The saved image was not included. Scan the crop again for an image-based diagnosis.
                 </p>
               )}
               {plan.symptoms?.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500">Observed / likely symptoms</h4>
-                  <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-700">
-                    {plan.symptoms.map((symptom, index) => <li key={`${index}-${symptom}`}>{symptom}</li>)}
-                  </ul>
-                </div>
+                <p className="mt-3 text-sm leading-6 text-gray-600">
+                  <strong className="text-gray-800">Visible signs:</strong> {plan.symptoms.join('; ')}
+                </p>
               )}
               {plan.causes?.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500">Possible causes</h4>
-                  <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-700">
-                    {plan.causes.map((cause, index) => <li key={`${index}-${cause}`}>{cause}</li>)}
-                  </ul>
-                </div>
+                <p className="mt-2 text-sm leading-6 text-gray-600">
+                  <strong className="text-gray-800">Possible cause:</strong> {plan.causes.join('; ')}
+                </p>
               )}
             </article>
-          </section>
 
-          <div className="flex items-center justify-between text-xs text-gray-500 px-1">
-            <span>Unverified general guidance from <strong className="text-emerald-700">{source}</strong></span>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setActiveTab('all')} 
-                className={`px-2.5 py-1 rounded-lg font-semibold transition ${activeTab === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'}`}
-              >
-                All Protocols
-              </button>
-              <button 
-                onClick={() => setActiveTab('organic')} 
-                className={`px-2.5 py-1 rounded-lg font-semibold transition ${activeTab === 'organic' ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-800'}`}
-              >
-                Organic Focus
-              </button>
-              <button 
-                onClick={() => setActiveTab('chemical')} 
-                className={`px-2.5 py-1 rounded-lg font-semibold transition ${activeTab === 'chemical' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-800'}`}
-              >
-                Chemical Focus
-              </button>
-            </div>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            {/* Immediate Action */}
-            <div className="bg-white rounded-2xl p-5 border-l-4 border-l-red-500 border border-gray-100 shadow-sm sm:col-span-2">
-              <div className="flex items-center justify-between mb-2">
+            <article className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2">
+                <Leaf size={18} className="text-emerald-700" />
+                <h3 className="text-base font-bold text-gray-900">Treatment plan</h3>
+              </div>
+              {plan.organicTreatment?.length > 0 ? (
+                <ol className="mt-3 list-inside list-decimal space-y-2 text-sm leading-6 text-gray-700">
+                  {plan.organicTreatment.slice(0, 3).map((step, index) => (
+                    <li key={`${index}-${step}`}>{step}</li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="mt-3 text-sm text-gray-600">No treatment steps were returned. Retry diagnosis or consult a local crop expert.</p>
+              )}
+              <div className="mt-4 border-t border-gray-100 pt-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold">
-                    <AlertTriangle className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-gray-900">Immediate action guidance</h4>
-                    <p className="text-[11px] text-gray-400">General first steps; review before acting</p>
-                  </div>
+                  <FlaskConical size={16} className="text-purple-700" />
+                  <h4 className="text-sm font-semibold text-gray-900">Chemical safety</h4>
                 </div>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-800 uppercase">Review first</span>
+                <p className="mt-1 text-sm leading-6 text-gray-600">
+                  {plan.chemicalTreatment?.[0] || 'Ask a qualified local expert before using any crop-protection product.'}
+                </p>
               </div>
-              <p className="text-sm text-gray-700 leading-relaxed pl-10 whitespace-pre-line">{plan.immediate_action}</p>
-            </div>
-
-            {/* Organic Treatment */}
-            {(activeTab === 'all' || activeTab === 'organic') && (
-              <div className="bg-white rounded-2xl p-5 border-l-4 border-l-emerald-600 border border-gray-100 shadow-sm flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                        <Leaf className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-gray-900">Organic treatment note</h4>
-                        <p className="text-[11px] text-gray-400">General guidance only; no product or dose is recommended.</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Not verified</span>
-                  </div>
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{plan.organic_treatment}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Chemical Treatment */}
-            {(activeTab === 'all' || activeTab === 'chemical') && (
-              <div className="bg-white rounded-2xl p-5 border-l-4 border-l-purple-600 border border-gray-100 shadow-sm flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                        <FlaskConical className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-gray-900">Chemical safety note</h4>
-                        <p className="text-[11px] text-gray-400">Consult a licensed local expert before using crop-protection products.</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">Expert review</span>
-                  </div>
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{plan.chemical_treatment}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Application Guidance */}
-            <div className="bg-white rounded-2xl p-5 border-l-4 border-l-blue-600 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Droplets className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-gray-900">Application Technique & Timing</h4>
-                  <p className="text-[11px] text-gray-400">General monitoring guidance; no application dose</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{plan.application_guidance}</p>
-            </div>
-
-            {/* Recovery Time */}
-            <div className="bg-white rounded-2xl p-5 border-l-4 border-l-amber-500 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-gray-900">Recovery estimate</h4>
-                  <p className="text-[11px] text-gray-400">Not estimated from the available evidence</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line font-medium text-amber-900">{plan.recovery_time}</p>
-            </div>
-
-            {/* Safety & PPE Advisory */}
-            <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0" />
-                <h4 className="font-bold text-sm text-amber-900">Safety guidance</h4>
-              </div>
-              <p className="text-xs text-amber-800 leading-relaxed whitespace-pre-line">{plan.safety_warning || 'No specific safety guidance available. Follow the label and local expert advice for any treatment.'}</p>
-            </div>
-
-            {/* Prevention & IPM */}
-            <div className="bg-white rounded-2xl p-5 border-l-4 border-l-teal-600 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-gray-900">Prevention and monitoring</h4>
-                  <p className="text-[11px] text-gray-400">General suggestions; confirm locally</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                {Array.isArray(plan.prevention) ? plan.prevention.join('\n') : plan.prevention}
-              </p>
-            </div>
-
-            {/* Weather Consideration */}
-            <div className="bg-sky-50 border border-sky-200 rounded-2xl p-5 shadow-sm sm:col-span-2">
-              <div className="flex items-center gap-2 mb-2">
-                <CloudSun className="w-5 h-5 text-sky-700 shrink-0" />
-                <h4 className="font-bold text-sm text-sky-950">Weather considerations</h4>
-              </div>
-              <p className="text-xs text-sky-900 leading-relaxed whitespace-pre-line font-medium">
-                {plan.weather_consideration}
-              </p>
-            </div>
-          </div>
+            </article>
+          </section>
+          {plan.prevention?.length > 0 && (
+            <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-gray-900">Monitor and prevent</h3>
+              <ul className="mt-2 list-inside list-disc space-y-1 text-sm leading-6 text-gray-700">
+                {plan.prevention.slice(0, 3).map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}
+              </ul>
+            </section>
+          )}
+          <p className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+            <CheckCircle2 size={15} className="mt-0.5 shrink-0" />
+            AI guidance is not a confirmed diagnosis. Do not use chemicals without local expert advice and label directions.
+          </p>
           <form onSubmit={handleDeployTreatment} className="metric-card space-y-3">
             <h3 className="text-sm font-bold text-gray-900">Record a treatment you have chosen</h3>
             <p className="text-xs text-gray-600">This adds your own plan to the Treatment Tracker. AI guidance is not a treatment prescription.</p>

@@ -7,6 +7,7 @@ import AppErrorBoundary from './components/AppErrorBoundary'
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
+const InterventionPrioritizer = lazy(() => import('./pages/InterventionPrioritizer'))
 const MyFarms = lazy(() => import('./pages/MyFarms'))
 const CropScanner = lazy(() => import('./pages/CropScanner'))
 const RescuePlanner = lazy(() => import('./pages/RescuePlanner'))
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
+          <Route path="/priority" element={<Protected><InterventionPrioritizer /></Protected>} />
           <Route path="/farms" element={<Protected><MyFarms /></Protected>} />
           <Route path="/scanner" element={<Protected><CropScanner /></Protected>} />
           <Route path="/rescue" element={<Protected><RescuePlanner /></Protected>} />

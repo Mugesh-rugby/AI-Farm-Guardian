@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../api/client'
 import toast from 'react-hot-toast'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ClipboardList, Plus, CheckCircle, Clock, AlertTriangle, ChevronRight } from 'lucide-react'
 
 const STATUS_CONFIG = {
@@ -17,13 +17,15 @@ const TYPE_CONFIG = {
 }
 
 export default function TreatmentTracker() {
+  const [searchParams] = useSearchParams()
+  const requestedScanId = searchParams.get('scanId') || ''
   const [treatments, setTreatments] = useState([])
   const [issues, setIssues] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(Boolean(requestedScanId))
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({
-    scan_id: '', action: '', treatment_type: 'organic',
+    scan_id: requestedScanId, action: '', treatment_type: 'organic',
     cost: '', follow_up_at: '', notes: ''
   })
 
@@ -38,6 +40,12 @@ export default function TreatmentTracker() {
   }
 
   useEffect(() => { fetchData() }, [])
+
+  useEffect(() => {
+    if (!requestedScanId) return
+    setForm((current) => ({ ...current, scan_id: requestedScanId }))
+    setShowForm(true)
+  }, [requestedScanId])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

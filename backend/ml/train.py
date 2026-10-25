@@ -3,7 +3,6 @@ import hashlib
 import json
 import random
 from pathlib import Path
-
 import timm
 import torch
 from PIL import Image
@@ -15,12 +14,6 @@ from torchvision.datasets import ImageFolder
 
 ARCHITECTURE = "mobilenetv3_small_100"
 IMAGE_SIZE = 224
-DEFAULT_CLASSES = (
-    "Tomato_healthy",
-    "Tomato_Early_blight",
-    "Tomato_Late_blight",
-    "Tomato_Bacterial_spot",
-)
 TRAIN_AUTO_AUGMENT = "rand-m9-mstd0.5"
 
 
@@ -39,8 +32,15 @@ class CropImageDataset(Dataset):
         return self.transform(image), label
 
 
-def collect_class_samples(dataset_root: Path, class_names: tuple[str, ...], max_per_class: int, seed: int):
+def collect_class_samples(
+    dataset_root: Path,
+    class_names: tuple[str, ...] | None,
+    max_per_class: int,
+    seed: int,
+):
     source = ImageFolder(dataset_root)
+    if class_names is None:
+        class_names = tuple(source.classes)
     unknown = sorted(set(class_names) - set(source.classes))
     if unknown:
         raise ValueError(f"Dataset is missing class folders: {', '.join(unknown)}")
@@ -114,17 +114,24 @@ def evaluate(model, loader, device, class_names):
     }
 
 
+def enable_full_model_training(model):
+    for parameter in model.parameters():
+        parameter.requires_grad = True
+    return [parameter for parameter in model.parameters() if parameter.requires_grad]
+
+
 def train(
     dataset_root: Path,
     checkpoint_path: Path,
     epochs: int,
     batch_size: int,
     max_per_class: int,
-    class_names: tuple[str, ...] = DEFAULT_CLASSES,
+    class_names: tuple[str, ...] | None = None,
     seed: int = 17,
 ):
     torch.manual_seed(seed)
     class_samples = collect_class_samples(dataset_root, class_names, max_per_class, seed)
+    class_names = tuple(class_samples)
     splits = split_samples(class_samples, seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -152,14 +159,12 @@ def train(
         for split, dataset in datasets.items()
     }
 
-    for parameter in model.parameters():
-        parameter.requires_grad = False
-    classifier = model.get_classifier()
-    for parameter in classifier.parameters():
-        parameter.requires_grad = True
-
+    trainable_parameters = enable_full_model_training(model)
     model.to(device)
-    optimizer = torch.optim.AdamW(classifier.parameters(), lr=1e-3, weight_decay=1e-4)
+    optimizer = torch.optim.AdamW(
+        trainable_parameters, lr=1e-4, weight_decay=1e-4
+    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     criterion = nn.CrossEntropyLoss()
     best_val_accuracy = -1.0
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
@@ -178,6 +183,7 @@ def train(
             train_count += labels.size(0)
 
         validation = evaluate(model, loaders["val"], device, class_names)
+        scheduler.step()
         val_accuracy = validation["accuracy"]
         print(
             f"epoch={epoch + 1}/{epochs} "
@@ -199,7 +205,9 @@ def train(
                         "epochs": epochs,
                         "max_per_class": max_per_class,
                         "image_size": IMAGE_SIZE,
-                        "classifier_only": True,
+                        "training_mode": "full_finetuning",
+                        "classifier_only": False,
+                        "learning_rate": 1e-4,
                     },
                 },
                 checkpoint_path,
@@ -226,7 +234,7 @@ def train(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Train and evaluate a balanced tomato crop classifier."
+        description="Train and evaluate a balanced crop classifier."
     )
     parser.add_argument(
         "--dataset",
@@ -238,11 +246,15 @@ def main():
         type=Path,
         default=Path("backend/models/efficientnetv2_s.pth"),
     )
-    parser.add_argument("--epochs", type=int, default=5)
+    parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--max-per-class", type=int, default=1000)
+    parser.add_argument("--max-per-class", type=int, default=200)
     parser.add_argument("--seed", type=int, default=17)
-    parser.add_argument("--classes", nargs="+", default=list(DEFAULT_CLASSES))
+    parser.add_argument(
+        "--classes",
+        nargs="+",
+        help="Class folder names to train; defaults to every class in the dataset.",
+    )
     args = parser.parse_args()
     if args.epochs < 1 or args.batch_size < 1 or args.max_per_class < 3:
         parser.error("--epochs, --batch-size, and --max-per-class must be positive (at least 3 images per class).")
@@ -252,7 +264,7 @@ def main():
         args.epochs,
         args.batch_size,
         args.max_per_class,
-        tuple(args.classes),
+        tuple(args.classes) if args.classes else None,
         args.seed,
     )
 

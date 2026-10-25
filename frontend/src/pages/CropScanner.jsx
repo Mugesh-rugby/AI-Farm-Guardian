@@ -4,7 +4,7 @@ import api from '../api/client'
 import { useFarm } from '../context/FarmContext'
 import toast from 'react-hot-toast'
 import {
-  AlertTriangle, ArrowRight, CheckCircle2, ImagePlus, Info, Leaf,
+  AlertTriangle, ArrowRight, Camera, CheckCircle2, ImagePlus, Info, Leaf,
   LoaderCircle, ScanLine, ShieldAlert, Target, Upload, X
 } from 'lucide-react'
 
@@ -37,10 +37,33 @@ export default function CropScanner() {
   const [modelStatusError, setModelStatusError] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef(null)
+  const videoRef = useRef(null)
+  const cameraStreamRef = useRef(null)
+  const cameraRequestIdRef = useRef(0)
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraStream, setCameraStream] = useState(null)
+  const [cameraError, setCameraError] = useState('')
 
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview)
   }, [preview])
+
+  useEffect(() => {
+    if (!cameraOpen || !cameraStream || !videoRef.current) return
+    const video = videoRef.current
+    video.srcObject = cameraStream
+    video.play().catch(() => {
+      setCameraError('Camera preview could not start. Check your browser camera permission and try again.')
+    })
+    return () => {
+      video.srcObject = null
+    }
+  }, [cameraOpen, cameraStream])
+
+  useEffect(() => () => {
+    cameraRequestIdRef.current += 1
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
+  }, [])
 
   useEffect(() => {
     api.get('/scans/model-status')
@@ -79,11 +102,81 @@ export default function CropScanner() {
     handleFile(event.dataTransfer.files[0])
   }, [])
 
+  const stopCamera = () => {
+    cameraRequestIdRef.current += 1
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
+    cameraStreamRef.current = null
+    setCameraStream(null)
+    setCameraOpen(false)
+  }
+
+  const startCamera = async () => {
+    setError('')
+    setCameraError('')
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Camera access is unavailable. Open the app using HTTPS or localhost in a supported browser.')
+      setCameraOpen(true)
+      return
+    }
+
+    const requestId = ++cameraRequestIdRef.current
+    setCameraOpen(true)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: 'environment' } },
+      })
+      if (requestId !== cameraRequestIdRef.current) {
+        stream.getTracks().forEach((track) => track.stop())
+        return
+      }
+      cameraStreamRef.current = stream
+      setCameraStream(stream)
+    } catch (cameraRequestError) {
+      if (requestId !== cameraRequestIdRef.current) return
+      const messages = {
+        NotAllowedError: 'Camera permission was denied. Allow camera access in your browser settings, then try again.',
+        NotFoundError: 'No camera was found on this device.',
+        NotReadableError: 'The camera is already being used by another app. Close it and retry.',
+        SecurityError: 'Camera access requires a secure page. Open the app using HTTPS or localhost.',
+      }
+      setCameraError(messages[cameraRequestError.name] || 'Could not open the camera. Check camera permissions and try again.')
+    }
+  }
+
+  const capturePhoto = () => {
+    const video = videoRef.current
+    if (!video?.videoWidth || !video?.videoHeight) {
+      setCameraError('The camera is not ready yet. Wait for the preview, then try again.')
+      return
+    }
+
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const context = canvas.getContext('2d')
+    if (!context) {
+      setCameraError('Photo capture is unavailable in this browser. Please upload an image instead.')
+      return
+    }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        setCameraError('Could not capture the photo. Please try again.')
+        return
+      }
+      const photo = new File([blob], `crop-scan-${Date.now()}.jpg`, { type: 'image/jpeg' })
+      stopCamera()
+      handleFile(photo)
+    }, 'image/jpeg', 0.92)
+  }
+
   const clearImage = () => {
     setImage(null)
     setPreview('')
     setResult(null)
     setError('')
+    setCameraError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -203,7 +296,7 @@ export default function CropScanner() {
             </div>
 
             <div>
-              <p className="mb-2 text-sm font-semibold text-gray-800">Upload a crop photo</p>
+              <p className="mb-2 text-sm font-semibold text-gray-800">Capture or upload a crop photo</p>
               <div
                 onDrop={handleDrop}
                 onDragOver={(event) => { event.preventDefault(); setDragOver(true) }}
@@ -212,7 +305,37 @@ export default function CropScanner() {
                   dragOver ? 'border-emerald-500 bg-emerald-50' : 'border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50'
                 }`}
               >
-                {preview ? (
+                {cameraOpen ? (
+                  <div className="flex w-full flex-col items-center">
+                    {cameraStream ? (
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        aria-label="Live crop camera preview"
+                        className="max-h-64 w-full rounded-xl bg-black object-contain"
+                      />
+                    ) : !cameraError ? (
+                      <div className="flex min-h-48 items-center justify-center gap-2 text-sm text-gray-600" role="status">
+                        <LoaderCircle size={18} className="animate-spin" /> Opening camera…
+                      </div>
+                    ) : null}
+                    {cameraError && (
+                      <p className="mt-2 max-w-md text-sm text-red-700" role="alert">{cameraError}</p>
+                    )}
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                      {cameraStream && (
+                        <button type="button" onClick={capturePhoto} className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm text-white">
+                          <Camera size={16} /> Capture photo
+                        </button>
+                      )}
+                      <button type="button" onClick={stopCamera} className="btn-secondary inline-flex items-center gap-2 px-4 py-2 text-sm">
+                        <X size={15} /> Close camera
+                      </button>
+                    </div>
+                  </div>
+                ) : preview ? (
                   <>
                     <img src={preview} alt="Selected crop leaf preview" className="max-h-64 max-w-full rounded-xl object-contain shadow-sm" />
                     <p className="mt-3 max-w-full truncate text-sm font-medium text-gray-700">{image?.name}</p>
@@ -225,6 +348,24 @@ export default function CropScanner() {
                     >
                       <X size={17} />
                     </button>
+                    <div className="mt-3 flex flex-wrap justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={scanning}
+                        className="btn-secondary inline-flex items-center gap-2 px-3 py-2 text-sm"
+                      >
+                        <Upload size={15} /> Choose another
+                      </button>
+                      <button
+                        type="button"
+                        onClick={startCamera}
+                        disabled={scanning}
+                        className="btn-secondary inline-flex items-center gap-2 px-3 py-2 text-sm"
+                      >
+                        <Camera size={15} /> Retake with camera
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -240,6 +381,14 @@ export default function CropScanner() {
                     >
                       <Upload size={15} /> Choose image
                     </button>
+                    <button
+                      type="button"
+                      onClick={startCamera}
+                      disabled={scanning || !fields.length}
+                      className="btn-secondary mt-2 inline-flex items-center gap-2 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Camera size={15} /> Use camera
+                    </button>
                   </>
                 )}
               </div>
@@ -249,7 +398,10 @@ export default function CropScanner() {
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="sr-only"
-                onChange={(event) => handleFile(event.target.files[0])}
+                onChange={(event) => {
+                  handleFile(event.target.files[0])
+                  event.target.value = ''
+                }}
                 aria-label="Choose crop image"
               />
             </div>
@@ -330,6 +482,9 @@ export default function CropScanner() {
               <div className="grid gap-2">
                 <Link to={`/rescue/${result.id}`} className="btn-secondary inline-flex items-center justify-center gap-2 px-3 py-2.5 text-sm">
                   <Target size={16} /> Verify diagnosis and view rescue plan
+                </Link>
+                <Link to={`/priority?scanId=${result.id}`} className="btn-primary inline-flex items-center justify-center gap-2 px-3 py-2.5 text-sm text-white">
+                  <AlertTriangle size={16} /> Assess intervention priority
                 </Link>
                 <p className="text-center text-xs text-gray-500">
                   The diagnosis step sends this saved crop photo to your configured Groq vision model for review.

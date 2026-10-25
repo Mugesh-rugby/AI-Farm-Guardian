@@ -1,82 +1,392 @@
 {
-  "accuracy": 0.8133333333333334,
-  "sample_count": 600,
+  "accuracy": 0.9480812641083521,
+  "sample_count": 443,
   "classification_report": {
-    "Tomato_healthy": {
-      "precision": 0.9047619047619048,
-      "recall": 0.8866666666666667,
-      "f1-score": 0.8956228956228957,
-      "support": 150.0
+    "Pepper__bell___Bacterial_spot": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 30.0
     },
-    "Tomato_Early_blight": {
-      "precision": 0.7674418604651163,
-      "recall": 0.66,
-      "f1-score": 0.7096774193548387,
-      "support": 150.0
+    "Pepper__bell___healthy": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 30.0
     },
-    "Tomato_Late_blight": {
-      "precision": 0.6987951807228916,
-      "recall": 0.7733333333333333,
-      "f1-score": 0.7341772151898734,
-      "support": 150.0
+    "Potato___Early_blight": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 30.0
+    },
+    "Potato___Late_blight": {
+      "precision": 0.9666666666666667,
+      "recall": 0.9666666666666667,
+      "f1-score": 0.9666666666666667,
+      "support": 30.0
+    },
+    "Potato___healthy": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 23.0
     },
     "Tomato_Bacterial_spot": {
-      "precision": 0.8860759493670886,
-      "recall": 0.9333333333333333,
-      "f1-score": 0.9090909090909091,
-      "support": 150.0
+      "precision": 0.9666666666666667,
+      "recall": 0.9666666666666667,
+      "f1-score": 0.9666666666666667,
+      "support": 30.0
     },
-    "accuracy": 0.8133333333333334,
+    "Tomato_Early_blight": {
+      "precision": 0.8518518518518519,
+      "recall": 0.7666666666666667,
+      "f1-score": 0.8070175438596491,
+      "support": 30.0
+    },
+    "Tomato_Late_blight": {
+      "precision": 0.8181818181818182,
+      "recall": 0.9,
+      "f1-score": 0.8571428571428571,
+      "support": 30.0
+    },
+    "Tomato_Leaf_Mold": {
+      "precision": 0.9666666666666667,
+      "recall": 0.9666666666666667,
+      "f1-score": 0.9666666666666667,
+      "support": 30.0
+    },
+    "Tomato_Septoria_leaf_spot": {
+      "precision": 0.9642857142857143,
+      "recall": 0.9,
+      "f1-score": 0.9310344827586207,
+      "support": 30.0
+    },
+    "Tomato_Spider_mites_Two_spotted_spider_mite": {
+      "precision": 0.9629629629629629,
+      "recall": 0.8666666666666667,
+      "f1-score": 0.9122807017543859,
+      "support": 30.0
+    },
+    "Tomato__Target_Spot": {
+      "precision": 0.8181818181818182,
+      "recall": 0.9,
+      "f1-score": 0.8571428571428571,
+      "support": 30.0
+    },
+    "Tomato__Tomato_YellowLeaf__Curl_Virus": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 30.0
+    },
+    "Tomato__Tomato_mosaic_virus": {
+      "precision": 0.967741935483871,
+      "recall": 1.0,
+      "f1-score": 0.9836065573770492,
+      "support": 30.0
+    },
+    "Tomato_healthy": {
+      "precision": 0.967741935483871,
+      "recall": 1.0,
+      "f1-score": 0.9836065573770492,
+      "support": 30.0
+    },
+    "accuracy": 0.9480812641083521,
     "macro avg": {
-      "precision": 0.8142687238292502,
-      "recall": 0.8133333333333335,
-      "f1-score": 0.8121421098146292,
-      "support": 600.0
+      "precision": 0.9500632024287938,
+      "recall": 0.948888888888889,
+      "f1-score": 0.9487887704941647,
+      "support": 443.0
     },
     "weighted avg": {
-      "precision": 0.8142687238292503,
-      "recall": 0.8133333333333334,
-      "f1-score": 0.8121421098146292,
-      "support": 600.0
+      "precision": 0.94927413339268,
+      "recall": 0.9480812641083521,
+      "f1-score": 0.9479795637073907,
+      "support": 443.0
     }
   },
   "confusion_matrix": [
     [
-      133,
+      30,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      30,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      30,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      29,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      23,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      29,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      23,
       3,
-      13,
+      1,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      2,
+      27,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      29,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      27,
+      0,
+      2,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      26,
+      2,
+      0,
+      1,
       1
     ],
     [
-      9,
-      99,
-      31,
-      11
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0,
+      1,
+      27,
+      0,
+      0,
+      0
     ],
     [
-      3,
-      25,
-      116,
-      6
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      30,
+      0,
+      0
     ],
     [
-      2,
-      2,
-      6,
-      140
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      30,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      30
     ]
   ],
   "classes": [
-    "Tomato_healthy",
+    "Pepper__bell___Bacterial_spot",
+    "Pepper__bell___healthy",
+    "Potato___Early_blight",
+    "Potato___Late_blight",
+    "Potato___healthy",
+    "Tomato_Bacterial_spot",
     "Tomato_Early_blight",
     "Tomato_Late_blight",
-    "Tomato_Bacterial_spot"
+    "Tomato_Leaf_Mold",
+    "Tomato_Septoria_leaf_spot",
+    "Tomato_Spider_mites_Two_spotted_spider_mite",
+    "Tomato__Target_Spot",
+    "Tomato__Tomato_YellowLeaf__Curl_Virus",
+    "Tomato__Tomato_mosaic_virus",
+    "Tomato_healthy"
   ],
   "training_config": {
     "seed": 17,
-    "epochs": 5,
-    "max_per_class": 1000,
+    "epochs": 10,
+    "max_per_class": 200,
     "image_size": 224,
-    "classifier_only": true
+    "training_mode": "full_finetuning",
+    "classifier_only": false,
+    "learning_rate": 0.0001
   }
 }

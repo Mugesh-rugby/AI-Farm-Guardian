@@ -1,0 +1,82 @@
+{
+  "accuracy": 0.8133333333333334,
+  "sample_count": 600,
+  "classification_report": {
+    "Tomato_healthy": {
+      "precision": 0.9047619047619048,
+      "recall": 0.8866666666666667,
+      "f1-score": 0.8956228956228957,
+      "support": 150.0
+    },
+    "Tomato_Early_blight": {
+      "precision": 0.7674418604651163,
+      "recall": 0.66,
+      "f1-score": 0.7096774193548387,
+      "support": 150.0
+    },
+    "Tomato_Late_blight": {
+      "precision": 0.6987951807228916,
+      "recall": 0.7733333333333333,
+      "f1-score": 0.7341772151898734,
+      "support": 150.0
+    },
+    "Tomato_Bacterial_spot": {
+      "precision": 0.8860759493670886,
+      "recall": 0.9333333333333333,
+      "f1-score": 0.9090909090909091,
+      "support": 150.0
+    },
+    "accuracy": 0.8133333333333334,
+    "macro avg": {
+      "precision": 0.8142687238292502,
+      "recall": 0.8133333333333335,
+      "f1-score": 0.8121421098146292,
+      "support": 600.0
+    },
+    "weighted avg": {
+      "precision": 0.8142687238292503,
+      "recall": 0.8133333333333334,
+      "f1-score": 0.8121421098146292,
+      "support": 600.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      133,
+      3,
+      13,
+      1
+    ],
+    [
+      9,
+      99,
+      31,
+      11
+    ],
+    [
+      3,
+      25,
+      116,
+      6
+    ],
+    [
+      2,
+      2,
+      6,
+      140
+    ]
+  ],
+  "classes": [
+    "Tomato_healthy",
+    "Tomato_Early_blight",
+    "Tomato_Late_blight",
+    "Tomato_Bacterial_spot"
+  ],
+  "training_config": {
+    "seed": 17,
+    "epochs": 5,
+    "max_per_class": 1000,
+    "image_size": 224,
+    "classifier_only": true
+  }
+}

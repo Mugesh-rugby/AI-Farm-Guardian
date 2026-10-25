@@ -31,6 +31,10 @@ def summary(db: Session = Depends(get_db), user: models.User = Depends(get_curre
             "farm_health_score": None,
             "active_issues_count": 0,
             "treatment_stats": {"completed": 0, "scheduled": 0, "in_progress": 0},
+            "intervention_summary": {
+                "critical": 0, "high": 0, "medium": 0, "low": 0,
+                "pending": 0, "in_progress": 0, "completed": 0, "total": 0,
+            },
         }
 
     active_scans = (
@@ -69,7 +73,10 @@ def summary(db: Session = Depends(get_db), user: models.User = Depends(get_curre
         .join(models.Scan, models.PriorityScore.scan_id == models.Scan.id)
         .join(models.Field, models.Scan.field_id == models.Field.id)
         .join(models.Farm, models.Field.farm_id == models.Farm.id)
-        .filter(models.Field.farm_id.in_(farm_ids), models.Scan.status == "active")
+        .filter(
+            models.Field.farm_id.in_(farm_ids),
+            models.PriorityScore.status.in_(("pending", "in_progress")),
+        )
         .order_by(models.PriorityScore.score.desc())
         .first()
     )
@@ -110,12 +117,34 @@ def summary(db: Session = Depends(get_db), user: models.User = Depends(get_curre
         db.query(models.PriorityScore)
         .join(models.Scan, models.PriorityScore.scan_id == models.Scan.id)
         .join(models.Field, models.Scan.field_id == models.Field.id)
-        .filter(models.Field.farm_id.in_(farm_ids), models.Scan.status == "active")
+        .filter(
+            models.Field.farm_id.in_(farm_ids),
+            models.PriorityScore.status.in_(("pending", "in_progress")),
+        )
         .all()
     )
     tier_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
     for p in priorities:
         tier_counts[p.tier] = tier_counts.get(p.tier, 0) + 1
+
+    all_priorities = (
+        db.query(models.PriorityScore)
+        .join(models.Scan, models.PriorityScore.scan_id == models.Scan.id)
+        .join(models.Field, models.Scan.field_id == models.Field.id)
+        .filter(models.Field.farm_id.in_(farm_ids))
+        .all()
+    )
+    intervention_summary = {
+        "critical": 0, "high": 0, "medium": 0, "low": 0,
+        "pending": 0, "in_progress": 0, "completed": 0,
+        "total": len(all_priorities),
+    }
+    for priority in all_priorities:
+        tier_key = priority.tier.lower()
+        if tier_key in intervention_summary:
+            intervention_summary[tier_key] += 1
+        if priority.status in intervention_summary:
+            intervention_summary[priority.status] += 1
 
     # Keep the dashboard chart scoped to the most recent 30 calendar days.
     today = datetime.utcnow().date()
@@ -175,5 +204,6 @@ def summary(db: Session = Depends(get_db), user: models.User = Depends(get_curre
             for s in recent_scans
         ],
         "priority_distribution": tier_counts,
+        "intervention_summary": intervention_summary,
         "scan_activity": scan_activity
     }

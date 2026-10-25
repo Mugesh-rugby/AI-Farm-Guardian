@@ -151,12 +151,15 @@ def deploy_rescue_treatment(
     if not (plan.evidence_summary or "").startswith("AI-generated general guidance"):
         raise HTTPException(status_code=409, detail="This legacy rescue plan is unverified; generate a current plan first.")
 
+    selected_guidance = plan.organic_treatment if payload.action_type == "organic" else plan.chemical_treatment
+    treatment_notes = f"Rescue Planner guidance: {selected_guidance}"
+
     treatment = models.Treatment(
         scan_id=scan.id,
         action=payload.custom_notes,
         treatment_type=payload.action_type,
         status="pending",
-        notes=f"Farmer-entered treatment from Rescue Planner. Review AI guidance before applying. Weather note: {plan.weather_consideration}",
+        notes=treatment_notes,
     )
     db.add(treatment)
 

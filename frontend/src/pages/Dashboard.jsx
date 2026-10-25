@@ -2,23 +2,16 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/client'
 import {
-  AlertTriangle, ArrowRight, CheckCircle2, ClipboardList, Clock3, Leaf,
+  AlertTriangle, ArrowRight, Clock3, Leaf,
   Plus, RefreshCw, ScanLine, Tractor
 } from 'lucide-react'
 import {
-  ArcElement, CategoryScale, Chart as ChartJS, Filler, Legend, LinearScale,
+  CategoryScale, Chart as ChartJS, Filler, LinearScale,
   LineElement, PointElement, Tooltip
 } from 'chart.js'
-import { Doughnut, Line } from 'react-chartjs-2'
+import { Line } from 'react-chartjs-2'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend, Filler)
-
-const PRIORITY_COLORS = {
-  CRITICAL: '#dc2626',
-  HIGH: '#ea580c',
-  MEDIUM: '#d97706',
-  LOW: '#16a34a',
-}
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
 function formatDate(value) {
   if (!value) return 'Date unavailable'
@@ -67,11 +60,9 @@ export default function Dashboard() {
   }, [loadDashboard, reloadKey])
 
   const scanActivity = data?.scan_activity || []
-  const priorityDistribution = data?.priority_distribution || {}
-  const priorityTotal = Object.values(priorityDistribution).reduce((sum, count) => sum + (Number(count) || 0), 0)
   const recentScans = data?.recent_scans || []
-  const highestIssue = data?.highest_priority || data?.top_priority
   const treatments = data?.treatment_stats || {}
+  const interventions = data?.intervention_summary || {}
 
   const activityChart = {
     labels: scanActivity.map(({ date }) => {
@@ -87,17 +78,6 @@ export default function Dashboard() {
       tension: 0.3,
       pointRadius: 2,
       pointHoverRadius: 5,
-    }],
-  }
-
-  const priorityChart = {
-    labels: ['Critical', 'High', 'Medium', 'Low'],
-    datasets: [{
-      data: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map((tier) => Number(priorityDistribution[tier]) || 0),
-      backgroundColor: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map((tier) => PRIORITY_COLORS[tier]),
-      borderWidth: 3,
-      borderColor: '#fff',
-      hoverOffset: 4,
     }],
   }
 
@@ -179,51 +159,53 @@ export default function Dashboard() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+        <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6 xl:col-span-2">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Intervention overview</h2>
+              <p className="mt-1 text-sm text-gray-500">Counts from your saved intervention cases.</p>
+            </div>
+            <Link to="/priority" className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-900">
+              Open prioritizer <ArrowRight size={15} />
+            </Link>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              ['Critical', interventions.critical ?? 0, 'text-red-700'],
+              ['High', interventions.high ?? 0, 'text-orange-700'],
+              ['Open', (interventions.pending ?? 0) + (interventions.in_progress ?? 0), 'text-amber-700'],
+              ['Completed', interventions.completed ?? 0, 'text-emerald-700'],
+            ].map(([label, count, color]) => (
+              <div key={label} className="rounded-lg bg-gray-50 p-3">
+                <p className="text-xs font-medium text-gray-500">{label}</p>
+                <p className={`mt-1 text-xl font-bold ${color}`}>{count}</p>
+              </div>
+            ))}
+          </div>
+        </article>
+
         <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-gray-900">Highest priority active scan</h2>
-              <p className="mt-1 text-sm text-gray-500">Based on priority records saved for your farms.</p>
+              <h2 className="text-base font-bold text-gray-900">Treatment tracker</h2>
+              <p className="mt-1 text-sm text-gray-500">Recent treatment plans and their follow-up details.</p>
             </div>
-            <Link to="/rescue" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-900">
-              Open rescue planner <ArrowRight size={15} />
+            <Link to="/treatments" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-900">
+              Open tracker <ArrowRight size={15} />
             </Link>
           </div>
-          {highestIssue ? (
-            <div className="flex flex-col gap-4 rounded-xl border border-amber-100 bg-amber-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-lg font-bold text-gray-900">{highestIssue.issue_name || highestIssue.disease_name || 'Recorded crop risk'}</p>
-                <p className="mt-1 text-sm text-gray-600">
-                  {[highestIssue.farm_name, highestIssue.field_name, highestIssue.crop].filter(Boolean).join(' · ') || 'Farm details unavailable'}
-                </p>
-                <p className="mt-2 text-xs text-gray-600">
-                  {highestIssue.timeframe ? `Suggested timeframe: ${highestIssue.timeframe}` : 'Review the scan details and recommended next steps.'}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-800">
-                  {highestIssue.priority_category || highestIssue.tier || 'Priority'} · {Number(highestIssue.priority_score ?? highestIssue.score ?? 0).toFixed(0)}
-                </span>
-                <Link to={highestIssue.scan_id ? `/rescue/${highestIssue.scan_id}` : '/rescue'} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-800">
-                  Review plan <ArrowRight size={14} />
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center">
-              <CheckCircle2 className="mx-auto mb-2 text-emerald-600" size={25} />
-              <p className="font-semibold text-gray-800">No active priority risks</p>
-              <p className="mt-1 text-sm text-gray-500">New assessed risks will appear here after a scan is saved.</p>
-            </div>
-          )}
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <div className="rounded-xl bg-gray-50 p-3">
-              <p className="text-xs font-medium text-gray-500">Treatments completed</p>
-              <p className="mt-1 text-lg font-bold text-gray-900">{treatments.completed ?? data?.treatments_completed ?? 0}</p>
+              <p className="text-xs font-medium text-gray-500">Scheduled</p>
+              <p className="mt-1 text-lg font-bold text-sky-700">{treatments.scheduled ?? 0}</p>
             </div>
             <div className="rounded-xl bg-gray-50 p-3">
-              <p className="text-xs font-medium text-gray-500">Treatments tracked</p>
-              <p className="mt-1 text-lg font-bold text-gray-900">{treatments.total ?? data?.treatments_total ?? 0}</p>
+              <p className="text-xs font-medium text-gray-500">In progress</p>
+              <p className="mt-1 text-lg font-bold text-amber-700">{treatments.in_progress ?? 0}</p>
+            </div>
+            <div className="rounded-xl bg-gray-50 p-3">
+              <p className="text-xs font-medium text-gray-500">Completed</p>
+              <p className="mt-1 text-lg font-bold text-emerald-700">{treatments.completed ?? data?.treatments_completed ?? 0}</p>
             </div>
           </div>
         </article>
@@ -255,33 +237,7 @@ export default function Dashboard() {
         </article>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
-        <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
-          <div className="mb-4">
-            <h2 className="text-base font-bold text-gray-900">Active priority distribution</h2>
-            <p className="mt-1 text-sm text-gray-500">Saved priority assessments by tier.</p>
-          </div>
-          {priorityTotal > 0 ? (
-            <div className="flex h-56 items-center justify-center">
-              <Doughnut
-                data={priorityChart}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  cutout: '68%',
-                  plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, padding: 16 } } },
-                }}
-              />
-            </div>
-          ) : (
-            <div className="flex h-56 flex-col items-center justify-center text-center">
-              <ClipboardList className="mb-2 text-gray-300" size={28} />
-              <p className="text-sm font-medium text-gray-700">No priority assessments yet</p>
-              <p className="mt-1 text-xs text-gray-500">Saved assessments will be grouped here.</p>
-            </div>
-          )}
-        </article>
-
+      <section>
         <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>

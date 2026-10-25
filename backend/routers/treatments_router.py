@@ -10,6 +10,16 @@ from auth import get_current_user
 router = APIRouter(prefix="/api/treatments", tags=["treatments"])
 
 
+def _sync_intervention_status(db: Session, scan_id: int, treatment_status: str):
+    priority = (
+        db.query(models.PriorityScore)
+        .filter(models.PriorityScore.scan_id == scan_id)
+        .first()
+    )
+    if priority and treatment_status == "in_progress" and priority.status == "pending":
+        priority.status = "in_progress"
+
+
 @router.get("", response_model=List[schemas.TreatmentOut])
 @router.get("/", response_model=List[schemas.TreatmentOut])
 def list_treatments(
@@ -48,6 +58,7 @@ def create_treatment(payload: schemas.TreatmentCreate, db: Session = Depends(get
     if treatment.status == "completed" and treatment.applied_at is None:
         treatment.applied_at = datetime.utcnow()
     db.add(treatment)
+    _sync_intervention_status(db, scan.id, treatment.status)
     db.commit()
     db.refresh(treatment)
     return treatment
@@ -71,6 +82,7 @@ def update_treatment(treatment_id: int, payload: schemas.TreatmentUpdate, db: Se
         setattr(treatment, name, value)
     if treatment.status == "completed" and treatment.applied_at is None:
         treatment.applied_at = datetime.utcnow()
+    _sync_intervention_status(db, treatment.scan_id, treatment.status)
 
     db.commit()
     db.refresh(treatment)

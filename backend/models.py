@@ -82,12 +82,18 @@ class PriorityScore(Base):
     __tablename__ = "priority_scores"
     id = Column(Integer, primary_key=True, index=True)
     scan_id = Column(Integer, ForeignKey("scans.id", ondelete="CASCADE"), unique=True, nullable=False)
-    score = Column(Float, nullable=False)
+    score = Column(Float, nullable=True)
     tier = Column(String(50), nullable=False)  # CRITICAL, HIGH, MEDIUM, LOW
+    status = Column(String(30), nullable=False, default="pending")
+    scoring_method = Column(String(50), nullable=False, default="rules-v1")
+    chosen_action = Column(Text, nullable=True)
+    follow_up_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
     suggested_timeframe = Column(String(100), default="Within 24 hours")
     reasons_json = Column(Text, nullable=False)  # JSON list of strings
     factors_json = Column(Text, nullable=False)  # JSON dict of sub-scores
     computed_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     scan = relationship("Scan", back_populates="priority")
 

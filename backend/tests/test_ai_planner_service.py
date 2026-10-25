@@ -63,6 +63,32 @@ class RescueDiagnosisTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(plan["image_assessed"])
         self.assertIn("image diagnosis", plan["source"])
 
+    async def test_treatment_and_diagnosis_lists_are_limited_to_medium_length(self):
+        response = {
+            "description": "Leaf spots are visible; the photo may fit early blight but cannot confirm it.",
+            "symptoms": ["Sign one", "Sign two", "Sign three", "Extra sign"],
+            "causes": ["Cause one", "Cause two", "Extra cause"],
+            "organicTreatment": ["Step one", "Step two", "Step three", "Extra step"],
+            "chemicalTreatment": ["Ask a local expert.", "Extra chemical advice."],
+            "prevention": ["Tip one", "Tip two", "Tip three", "Extra tip"],
+            "recoveryTimeDays": [None, None],
+        }
+        with patch(
+            "backend.services.ai_planner_service.chat_completion",
+            new=AsyncMock(return_value=json.dumps(response)),
+        ):
+            plan = await generate_rescue_plan(
+                crop="tomato",
+                classifier_output="Tomato_Early_blight",
+            )
+
+        self.assertEqual(len(plan["symptoms"]), 3)
+        self.assertEqual(len(plan["causes"]), 2)
+        self.assertEqual(len(plan["organicTreatment"]), 3)
+        self.assertEqual(len(plan["chemicalTreatment"]), 1)
+        self.assertEqual(len(plan["prevention"]), 3)
+        self.assertEqual(plan["organic_treatment"], "Step one\nStep two\nStep three")
+
     async def test_incomplete_diagnosis_is_rejected(self):
         response = {
             "description": "Possible symptoms.",
